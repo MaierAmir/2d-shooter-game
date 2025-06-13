@@ -37,6 +37,7 @@ reload = 0
 resetList = 0
 runtime = 0
 bossActive = False
+plyrAni = 0
 
 shot = False
 lastShot = 0
@@ -73,7 +74,7 @@ waypoint = loadimg("wp.png", 30, 50)
 blank = loadimg("blank.png", 1, 1)
 crash = loadimg("csps.png", 400, 300)
 plyrback = loadimg("playerback.png", 40, 40)
-plyr = loadimg("player.png", 40, 40)
+
 bar = loadimg("Table.png", 175, 35)
 healthbar = loadimg("Boss_HP_Table.png", 1040, 20)
 gh = loadimg("gh3.png", 90, 90)
@@ -82,6 +83,19 @@ l2obj1 = loadimg("sp1.png", 250, 150)
 l2obj2 = loadimg("sp2.png", 300, 200)
 l2obj3 = loadimg("sp3.png", 50, 100)
 l2obj4 = loadimg("sp4.png", 50, 100)
+
+pwalkR = []
+pwalkL = []
+pwalkR.append(loadimg("1.png",40,40))
+pwalkR.append(loadimg("2.png",40,40))
+pwalkR.append(loadimg("3.png",40,40))
+
+pwalkL.append(loadimg("4.png",40,40))
+pwalkL.append(loadimg("5.png",40,40))
+pwalkL.append(loadimg("6.png",40,40))
+
+pindex =0
+plyr = pwalkR[0]
 
 # main menu
 mainmenu = True
@@ -205,7 +219,7 @@ class Character:
         self.health = 100
         self.typeChar = typec
         self.killed = False
-        self.rect = pygame.Rect(self.enemyPos.x, self.ewdnemyPos.y, 40, 40)
+        self.rect = pygame.Rect(self.enemyPos.x, self.enemyPos.y, 40, 40)
         self.enemyDir = pygame.Vector2(random.randint(0, x), random.randint(0, y)).normalize()
         self.enemyRange = 200
         self.hit = False
@@ -245,6 +259,10 @@ class Character:
                 self.hit = False
                 self.hitMarkerTime = 0
                 self.hitCount = 0
+
+            if self.enemyimg == bossimg:
+                bossHP = loadimg("Health_Dot.png", self.health*0.06, 8)
+                screen.blit(bossHP, (self.enemyPos.x + 15, self.enemyPos.y - 15))
 
     def enemymove(self, dir):
 
@@ -305,16 +323,12 @@ class Bullet:
         self.shot = False
         self.target = direction
         self.rect = pygame.Rect(self.posx, self.posy, 5, 5)
-        if self.initial == player_pos:
-            self.owner = True  # shooter of the bullet is player
-        else:
-            self.owner = False  # shooter of the bullet is enemy
         self.shooter =shooter
 
     def draw(self):
 
         self.rect = pygame.Rect(self.posx, self.posy, 5, 5)
-        if self.owner:
+        if self.shooter.typeChar:
             pygame.draw.rect(screen, "blue", self.rect)
         else:
             pygame.draw.rect(screen, "red", self.rect)
@@ -372,7 +386,7 @@ def shoot(targetdir, shooterPos, lastshot, gun, bullet, shooter):
     if lastshot >= gun.fireRate and gun.mag > 0:
 
         if not gun.id == "shotgun":
-            temp1 = Bullet(shooterPos.x, shooterPos.y, targetdir, shooter)
+            temp1 = Bullet(shooterPos.x + 20, shooterPos.y+20, targetdir, shooter)
             temp1.shot = True
             bullet.append(temp1)
         else:
@@ -518,13 +532,25 @@ boss.enemyimg = bossimg
 boss.health = 1000
 boss.enemyRange = 1000
 
+def pwalking():
+    global plyrAni, pindex, pwalkR,pwalkL
+    mousedir = pygame.mouse.get_pos()
 
+    if plyrAni > 0.25:
+        pindex += 1
 
-
+        pindex = pindex % 3
+        if mousedir[0] > player_pos.x:
+            player.playerimg = pwalkR[pindex]
+        else:
+            player.playerimg = pwalkL[pindex]
+        plyrAni = 0
 
 def gameplay(backg, gamelevel):
     global dt, lastShot, time, reload, reloadIndicator, running, player, runtime, pausetime, lvlscore, player_img, enemygun
-    global crash, plyrback, plyr, bar, healthbar, consumables, playerhit, phTime, score, gun, inv, shotgun, bossActive, boss
+    global crash, plyr, bar, healthbar, consumables, playerhit, phTime, score, gun, inv, shotgun, bossActive, boss
+    global plyrAni
+
 
     while running and player.health > 0:
 
@@ -534,7 +560,6 @@ def gameplay(backg, gamelevel):
                 running = False
 
         # relevent variables and updating
-
         alive = 0
         screen.blit(backg, (0, 0))
 
@@ -563,7 +588,7 @@ def gameplay(backg, gamelevel):
                 ar.pos = pygame.Vector2(-100, -100)
 
         elif gamelevel == 3:
-            print(boss.gun.range)
+
             shotgun.draw()
             if player_pos.distance_to(shotgun.pos) < 50:
                 gunpickup("shotgun")
@@ -618,17 +643,25 @@ def gameplay(backg, gamelevel):
         blocked = False
         tempx = player_pos.x
         tempy = player_pos.y
-
+        plyrAni += dt
         keys = pygame.key.get_pressed()
         if keys[pygame.K_w]:
-            tempy -= 300 * dt
+            tempy -= 150 * dt
+            pwalking()
         if keys[pygame.K_s]:
-            tempy += 300 * dt
+            tempy += 150 * dt
+            pwalking()
         if keys[pygame.K_a]:
-            tempx -= 300 * dt
+            tempx -= 150 * dt
+            pwalking()
         if keys[pygame.K_d]:
-            tempx += 300 * dt
-
+            tempx += 150 * dt
+            pwalking()
+        if plyrAni > 0.5:
+            if pygame.mouse.get_pos()[0] > player_pos.x:
+                player.playerimg = pwalkR[0]
+            else:
+                player.playerimg = pwalkL[0]
 
         intMenu(pygame.K_ESCAPE,1)
         intMenu(pygame.K_i,5)
@@ -637,7 +670,7 @@ def gameplay(backg, gamelevel):
 
         temprect = pygame.Rect(tempx, tempy, 40, 40)  # to deal with obstacles
 
-        for i in range(len(obstacles)):  # "
+        for i in range(len(obstacles)):  #
             if temprect.colliderect(obstacles[i].rect):
                 blocked = True
                 break
@@ -654,11 +687,6 @@ def gameplay(backg, gamelevel):
             direction = direction.normalize()  # Make it a unit vector
             lastShot = shoot(direction, player_pos, lastShot, gun, bullets,player)
 
-        mousedir = pygame.mouse.get_pos()
-        if mousedir[0] < player_pos.x:
-            player.playerimg = plyrback
-        else:
-            player.playerimg = plyr
 
         shootUpdate(True, bullets)
 
@@ -707,11 +735,6 @@ def gameplay(backg, gamelevel):
 
             elif gamelevel==3 and alive == 0 and not boss.killed:
                 bossActive = True
-
-
-
-
-
 
 
         print(player_pos)
@@ -911,14 +934,6 @@ def level3():
     enemyNum = 1
     for i in range(enemyNum):
         spawnObj(0, 0, 0, 0, 1190, 200, 275, False, enemyList)
-
-    #ymax 535 min 191
-    #xmax 1227
-
-    #lower wall s(0,515). e(1280,720)
-    #upper s(0,175), e(1280,0)
-    #l s(0,175), e(0,515)
-    #e s(1216,181) e(1280,515)ssd
 
     running = True
     gameplay(bg, 3)
