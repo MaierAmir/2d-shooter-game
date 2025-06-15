@@ -301,6 +301,14 @@ class Character:
 
         self.shootplayer()
 
+    def enemyUpdateL4(self):
+        global x
+        global y
+
+        self.enemyPos.y += 0.8
+        self.draw()
+        self.shootplayer()
+
     def shootplayer(self):
         global enemy_img, bossimg
         if self.enemyPos.distance_to(player_pos) <= self.enemyRange:
@@ -532,25 +540,27 @@ boss.enemyimg = bossimg
 boss.health = 1000
 boss.enemyRange = 1000
 
-def pwalking():
+def pwalking(level):
     global plyrAni, pindex, pwalkR,pwalkL
-    mousedir = pygame.mouse.get_pos()
+    if level != 4:
+        mousedir = pygame.mouse.get_pos()
 
-    if plyrAni > 0.25:
-        pindex += 1
+        if plyrAni > 0.25:
+            pindex += 1
 
-        pindex = pindex % 3
-        if mousedir[0] > player_pos.x:
-            player.playerimg = pwalkR[pindex]
-        else:
-            player.playerimg = pwalkL[pindex]
-        plyrAni = 0
+            pindex = pindex % 3
+            if mousedir[0] > player_pos.x:
+                player.playerimg = pwalkR[pindex]
+            else:
+                player.playerimg = pwalkL[pindex]
+            plyrAni = 0
 
 def gameplay(backg, gamelevel):
     global dt, lastShot, time, reload, reloadIndicator, running, player, runtime, pausetime, lvlscore, player_img, enemygun
     global crash, plyr, bar, healthbar, consumables, playerhit, phTime, score, gun, inv, shotgun, bossActive, boss
     global plyrAni
 
+    bgpointer = 0
 
     while running and player.health > 0:
 
@@ -561,7 +571,17 @@ def gameplay(backg, gamelevel):
 
         # relevent variables and updating
         alive = 0
-        screen.blit(backg, (0, 0))
+
+        if gamelevel != 4:
+            screen.blit(backg, (0, 0))
+        else:
+            bgpointer += 2
+            if bgpointer >= 720:
+                bgpointer = 0
+            screen.blit(backg, (0, bgpointer-720))
+            screen.blit(backg, (0, bgpointer))
+
+
 
         player.draw()
         # relevent objects per level
@@ -597,9 +617,9 @@ def gameplay(backg, gamelevel):
                 enemyList.append(boss)
                 boss.gun.range = 700
                 boss.gun.mag = 99999
-
-
                 bossActive = False
+
+
 
 
         # Regeneration
@@ -622,14 +642,18 @@ def gameplay(backg, gamelevel):
             if not enemy.killed:
                 alive += 1
             if enemy.health > 0:
-                enemy.enemyUpdate()
+                if gamelevel !=4:
+                    enemy.enemyUpdate()
+                else:
+                    enemy.enemyUpdateL4()
 
             else:
                 enemy.killed = True
                 lvlscore += 1
                 enemyList.remove(enemy)
                 enemy.rect = pygame.Rect(0, 0, 0, 0)
-                consumables.append(Obstacle(40, 40, enemy.enemyPos.x, enemy.enemyPos.y, ammoImg))
+                if gamelevel!=4:
+                    consumables.append(Obstacle(40, 40, enemy.enemyPos.x, enemy.enemyPos.y, ammoImg))
 
         shootUpdate(False, npcbullets)
         for item in consumables:
@@ -645,19 +669,19 @@ def gameplay(backg, gamelevel):
         tempy = player_pos.y
         plyrAni += dt
         keys = pygame.key.get_pressed()
-        if keys[pygame.K_w]:
+        if keys[pygame.K_w] and gamelevel!=4:
             tempy -= 150 * dt
-            pwalking()
-        if keys[pygame.K_s]:
+            pwalking(gamelevel)
+        if keys[pygame.K_s]and gamelevel!=4:
             tempy += 150 * dt
-            pwalking()
+            pwalking(gamelevel)
         if keys[pygame.K_a]:
             tempx -= 150 * dt
-            pwalking()
+            pwalking(gamelevel)
         if keys[pygame.K_d]:
             tempx += 150 * dt
-            pwalking()
-        if plyrAni > 0.5:
+            pwalking(gamelevel)
+        if plyrAni > 0.5 and gamelevel != 4:
             if pygame.mouse.get_pos()[0] > player_pos.x:
                 player.playerimg = pwalkR[0]
             else:
@@ -735,6 +759,9 @@ def gameplay(backg, gamelevel):
 
             elif gamelevel==3 and alive == 0 and not boss.killed:
                 bossActive = True
+
+            elif gamelevel ==3 and boss.killed:
+                levelAdvance(575, 200, 500, 650, 150, 180)
 
 
         print(player_pos)
@@ -914,7 +941,7 @@ def level3():
         menu(4, 3)
         menutime += menutimer
 
-    player.health = 100
+    player.health = 1000
     gun.mag = gun.magCapacity
 
     player_pos = pygame.Vector2(620, 503)
@@ -939,6 +966,40 @@ def level3():
     gameplay(bg, 3)
 
 
+
+def level4():
+    global obstacles, enemyList, bullets, npcbullets, player_pos, menutimer, running, consumables
+
+    menutime = 0
+
+    # while menutime < 500:
+    #     pygame.display.flip()
+    #     menu(4, 4)
+    #     menutime += menutimer
+
+    player.health = 9999
+    gun.mag = gun.magCapacity
+
+    player_pos = pygame.Vector2(620, 503)
+    bg = loadimg("bgl4.png", x, y)
+
+    obstacles = []
+    enemyList = []
+    bullets = []
+    npcbullets = []
+    consumables = []
+
+    player.playerimg = loadimg("pship.png", 40, 40)
+
+    enemyNum = 5
+    for i in range(enemyNum):
+        spawnObj(0, 0, 0, 0, 1180, 0, 0, False, enemyList)
+
+    running = True
+    gameplay(bg,4)
+
+
+
 obstacles.append(smg)
 level1()
 obstacles.append(ar)
@@ -952,9 +1013,15 @@ if player.health > 0:
 score += lvlscore
 
 if player.health > 0:
+    level4()
+score += lvlscore
+
+if player.health > 0:
     menu(2, 0)
 else:
     menu(3, 0)
+
+
 
 pygame.display.flip()
 
