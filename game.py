@@ -57,6 +57,9 @@ UIFont = pygame.font.SysFont("Arial", 20)
 
 inv = []
 
+lev4 = False
+
+
 # for torubleshooting obj rects
 
 objbox = False
@@ -66,7 +69,9 @@ def loadimg(file, xp, yp):
     img = pygame.image.load(file).convert_alpha()
     return pygame.transform.scale(img, (xp, yp))
 
-
+l4enemy = loadimg("l4e.png",40,40)
+sq1 = loadimg("invbox.png",200,90)
+select = loadimg("sq.png",100,90)
 menubg = loadimg("BG.png", 1280, 720)
 Window = loadimg("Window.png", x / 3, 500)
 scoreUI = loadimg("Score.png", 235, 45)
@@ -173,6 +178,16 @@ class Gun:
         self.range = 300
         self.img = loadimg("shotgun.png", 70, 40)
 
+    def shipGun(self):
+        self.id = "shipGun"
+        self.magCapacity = 50
+        self.mag = self.magCapacity
+        self.reloadTime = 2
+        self.damage = 35
+        self.fireRate = 0.05
+        self.range = 300
+        self.img = loadimg("blank.png", 70, 40)
+
     def pickupGun(self,gunType):
         global inv, gun
 
@@ -261,7 +276,7 @@ class Character:
                 self.hitCount = 0
 
             if self.enemyimg == bossimg:
-                bossHP = loadimg("Health_Dot.png", self.health*0.06, 8)
+                bossHP = loadimg("bosshp.png", self.health*0.06, 8)
                 screen.blit(bossHP, (self.enemyPos.x + 15, self.enemyPos.y - 15))
 
     def enemymove(self, dir):
@@ -310,12 +325,12 @@ class Character:
         self.shootplayer()
 
     def shootplayer(self):
-        global enemy_img, bossimg
+        global enemy_img, bossimg, lev4
         if self.enemyPos.distance_to(player_pos) <= self.enemyRange:
             self.npclastshot = shoot((player_pos - self.enemyPos).normalize(), self.enemyPos, self.npclastshot,
                                      self.gun, npcbullets, self)
             self.npclastshot += dt
-            if not self.enemyimg == bossimg:
+            if not self.enemyimg == bossimg and not lev4:
                 if player_pos.x < self.enemyPos.x :
                     self.enemyimg = loadimg("enemyback.png", 40, 40)
                 else:
@@ -492,9 +507,11 @@ def menu(menuType, level):
 
     elif menuType == 5:
         screen.blit(font.render("Inventory", True, (255, 255, 255)), (555, 150))
-        for i in inv:
-            screen.blit(i.img, (x/2.2,(inv.index(i)*70+250)))
 
+        for i in inv:
+            screen.blit(select, (x / 2.25, (inv.index(i) * 100 + 225)))
+            screen.blit(i.img, (x/2.2,(inv.index(i)*100+250)))
+            screen.blit(font.render(str(inv.index(i)+1), True, (255, 255, 255)), (x/2.5,(inv.index(i)*100+250)))
 
 
 smg = Obstacle(50, 40, x / 2, y / 2, loadimg("smg.png", 50, 40))
@@ -571,7 +588,7 @@ def gameplay(backg, gamelevel):
 
         # relevent variables and updating
         alive = 0
-
+        print(boss.killed)
         if gamelevel != 4:
             screen.blit(backg, (0, 0))
         else:
@@ -646,6 +663,9 @@ def gameplay(backg, gamelevel):
                     enemy.enemyUpdate()
                 else:
                     enemy.enemyUpdateL4()
+                    if enemy.enemyPos.y > 720:
+                        enemy.killed = True
+                        enemyList.remove(enemy)
 
             else:
                 enemy.killed = True
@@ -748,6 +768,8 @@ def gameplay(backg, gamelevel):
                 screen.blit(bar, (540, 640))
                 screen.blit(reloading, (578, 644))
 
+
+
         # advance to next level
 
         if alive == 0:
@@ -761,7 +783,10 @@ def gameplay(backg, gamelevel):
                 bossActive = True
 
             elif gamelevel ==3 and boss.killed:
-                levelAdvance(575, 200, 500, 650, 150, 180)
+                levelAdvance(575, 200, 500, 650, 200, 255)
+
+            elif gamelevel == 4:
+                l4spawner()
 
 
         print(player_pos)
@@ -776,7 +801,7 @@ def gameplay(backg, gamelevel):
         else:
             time += dt
         runtime += dt
-        print(inv)
+
 
 
 def levelAdvance(wpx, wpy, xmin, xmax, ymin, ymax):
@@ -962,26 +987,36 @@ def level3():
     for i in range(enemyNum):
         spawnObj(0, 0, 0, 0, 1190, 200, 275, False, enemyList)
 
+
     running = True
     gameplay(bg, 3)
 
-
+def l4spawner():
+    for i in range(random.randint(3, 9)):
+        opp = spawnObj(0, 0, 0, 200, 1180, 0, 0, False, enemyList)
+        opp.enemyimg = l4enemy
+        opp.enemyRange = 300
+        opp.gun.shipGun()
 
 def level4():
-    global obstacles, enemyList, bullets, npcbullets, player_pos, menutimer, running, consumables
-
+    global obstacles, enemyList, bullets, npcbullets, player_pos, menutimer, running, consumables, player,lev4
+    global inv
+    lev4=True
     menutime = 0
 
-    # while menutime < 500:
-    #     pygame.display.flip()
-    #     menu(4, 4)
-    #     menutime += menutimer
+    while menutime < 500:
+        pygame.display.flip()
+        menu(4, 4)
+        menutime += menutimer
 
     player.health = 9999
-    gun.mag = gun.magCapacity
+    inv= []
+
+    gunpickup("shipGun")
+    player.gun.ammo = 9999
 
     player_pos = pygame.Vector2(620, 503)
-    bg = loadimg("bgl4.png", x, y)
+    bg = loadimg("l4bg2.png", x, y)
 
     obstacles = []
     enemyList = []
@@ -991,30 +1026,30 @@ def level4():
 
     player.playerimg = loadimg("pship.png", 40, 40)
 
-    enemyNum = 5
-    for i in range(enemyNum):
-        spawnObj(0, 0, 0, 0, 1180, 0, 0, False, enemyList)
+    l4spawner()
+
 
     running = True
     gameplay(bg,4)
 
 
 
-obstacles.append(smg)
-level1()
-obstacles.append(ar)
-
-if player.health > 0:
-    level2()
-score += lvlscore
-
-if player.health > 0:
-    level3()
-score += lvlscore
+# obstacles.append(smg)
+# level1()
+# obstacles.append(ar)
+#
+# if player.health > 0:
+#     level2()
+# score += lvlscore
+#
+# if player.health > 0:
+#     level3()
+# score += lvlscore
 
 if player.health > 0:
     level4()
 score += lvlscore
+lev4=False
 
 if player.health > 0:
     menu(2, 0)
